@@ -81,7 +81,33 @@
 
   .panel{display:none;} .panel.active{display:block;}
 
-  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px;}
+  .stat-grid{display:grid; grid-template-columns:1fr; gap:18px; margin-bottom:24px;}
+  /* ── level row ── */
+  .lvl-row{background:var(--paper-2); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden;}
+  .lvl-row-head{display:flex; align-items:center; justify-content:space-between; padding:12px 18px; border-bottom:1px solid var(--line); cursor:pointer; user-select:none;}
+  .lvl-row-head:hover{background:var(--hover-bg);}
+  .lvl-row-head .lvl-name{font-family:'El Messiri',sans-serif; font-size:15px; font-weight:700; color:var(--heading);}
+  .lvl-row-head .lvl-total{font-family:'El Messiri',sans-serif; font-size:22px; font-weight:700; color:var(--green-deep);}
+  .lvl-row-head .lvl-toggle{font-size:13px; color:var(--ink-soft); transition:.2s;}
+  .lvl-row-head.open .lvl-toggle{transform:rotate(90deg);}
+  .lvl-cols{display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:0;}
+  .lvl-cols .stat-block{padding:14px 18px; border-left:1px solid var(--line);}
+  .lvl-cols .stat-block:first-child{border-left:none;}
+  .stat-block .sb-lbl{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--ink-soft); margin-bottom:8px;}
+  .stat-block .sb-main{display:flex; align-items:baseline; gap:6px;}
+  .stat-block .sb-n{font-family:'El Messiri',sans-serif; font-size:26px; font-weight:700; color:var(--heading);}
+  .stat-block .sb-sub{font-size:11.5px; color:var(--ink-soft);}
+  .stat-block .gender-row{display:flex; gap:10px; margin-top:7px; flex-wrap:wrap;}
+  .g-chip{display:inline-flex; align-items:center; gap:5px; padding:3px 10px; border-radius:999px; font-size:12px; font-weight:700;}
+  .g-chip.m{background:#EAF1F4; color:#3A6373;}
+  .g-chip.f{background:#F9EDF2; color:#8B3A58;}
+  .g-chip.mf{background:var(--blue-soft); color:var(--green-deep);}
+  .stat-block .bar-wrap{height:6px; border-radius:3px; background:var(--line); margin-top:9px; overflow:hidden;}
+  .stat-block .bar-m{height:100%; border-radius:3px; background:linear-gradient(90deg,#5C7C8A,#3A6373);}
+  .detail-rows{display:none; border-top:1px solid var(--line);}
+  .detail-rows.open{display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr));}
+  .detail-rows .stat-block{background:var(--hover-bg);}
+  /* safe toggle: onclick defined in JS, not inline, to avoid null getElementById */
   .stat-card{background:var(--paper-2); border:1px solid var(--line); border-radius:var(--radius); padding:15px 16px 13px; box-shadow:var(--shadow);}
   .stat-card .lvl-tag{font-size:11px; color:var(--gold); font-weight:700;}
   .stat-card .big{font-family:'El Messiri',sans-serif; font-size:28px; font-weight:700; color:var(--heading); margin:4px 0 2px;}
@@ -578,27 +604,279 @@ function applyDarkMode(){
 function renderOverview(){
   document.getElementById('overview-year-sub').textContent = 'تخطيط ' + (STATE.institution.year || '2026/2027');
   const el = document.getElementById('overview-stats');
+
+  /* ── helpers ── */
+  const cur = RAW_DATA.current;
+  const newArr = RAW_DATA.new_arrivals;
+  const pct = (n, tot) => tot ? Math.round(n/tot*100) : 0;
+
+  function gBlock(label, list, extra, color){
+    const n = list.length;
+    const m = list.filter(r=>r.g==='M').length;
+    const f = n - m;
+    const mPct = pct(m, n);
+    return `<div class="stat-block">
+      <div class="sb-lbl" style="color:${color||'var(--ink-soft)'};">${label}</div>
+      <div class="sb-main"><span class="sb-n">${n}</span>${extra||''}</div>
+      <div class="gender-row">
+        <span class="g-chip m">♂ ${m}</span>
+        <span class="g-chip f">♀ ${f}</span>
+      </div>
+      <div class="bar-wrap"><div class="bar-m" style="width:${mPct}%"></div></div>
+    </div>`;
+  }
+
   let html = '';
+
+  /* ══════════════════════ NEW ARRIVALS ROW ══════════════════════ */
+  const naTotal = newArr.length;
+  const naM = newArr.filter(r=>r.g==='M').length;
+  const naF = naTotal - naM;
+  const naMpct = pct(naM, naTotal);
+
+  html += `<div class="lvl-row">
+    <div class="lvl-row-head open" data-target="det-new" data-row-toggle="true">
+      <span class="lvl-name">الوافدون الجدد — السنة الأولى القادمة</span>
+      <span style="display:flex;align-items:center;gap:18px;">
+        <span class="g-chip mf">إجمالي: ${naTotal}</span>
+        <span class="g-chip m">♂ ${naM}</span>
+        <span class="g-chip f">♀ ${naF}</span>
+        <span class="lvl-toggle">›</span>
+      </span>
+    </div>
+    <div class="lvl-cols">
+      <div class="stat-block">
+        <div class="sb-lbl" style="color:var(--gold);">جميع الوافدين الجدد</div>
+        <div class="sb-main"><span class="sb-n">${naTotal}</span><span class="sb-sub">تلميذ</span></div>
+        <div class="gender-row">
+          <span class="g-chip m">♂ ذكور ${naM}</span>
+          <span class="g-chip f">♀ إناث ${naF}</span>
+        </div>
+        <div class="bar-wrap"><div class="bar-m" style="width:${naMpct}%"></div></div>
+      </div>
+      <div class="stat-block">
+        <div class="sb-lbl">المصدر</div>
+        <div class="sb-main"><span class="sb-n" style="font-size:15px; padding-top:4px;">من الابتدائي</span></div>
+        <div class="gender-row" style="margin-top:11px;">
+          <span class="g-chip mf">${new Set(newArr.map(r=>r.origin)).size} مدرسة ابتدائية</span>
+        </div>
+      </div>
+    </div>
+    <div class="detail-rows open" id="det-new">
+      <div class="stat-block">
+        <div class="sb-lbl" style="color:var(--gold);">وافدون ذكور فقط</div>
+        <div class="sb-main"><span class="sb-n">${naM}</span><span class="sb-sub"> / ${naTotal}</span></div>
+        <div class="bar-wrap"><div class="bar-m" style="width:${naMpct}%"></div></div>
+      </div>
+      <div class="stat-block">
+        <div class="sb-lbl">وافدات إناث فقط</div>
+        <div class="sb-main"><span class="sb-n">${naF}</span><span class="sb-sub"> / ${naTotal}</span></div>
+        <div class="bar-wrap" style="transform:scaleX(-1);"><div class="bar-m" style="width:${pct(naF,naTotal)}%;background:linear-gradient(90deg,#B05C73,#8B3A58);"></div></div>
+      </div>
+      <div class="stat-block">
+        <div class="sb-lbl">نسبة الجنس</div>
+        <div class="sb-main"><span class="sb-n">${naMpct}%</span><span class="sb-sub"> ذكور</span></div>
+        <div class="gender-row">
+          <span class="g-chip m">♂ ${naMpct}%</span>
+          <span class="g-chip f">♀ ${pct(naF,naTotal)}%</span>
+        </div>
+        <div class="bar-wrap"><div class="bar-m" style="width:${naMpct}%"></div></div>
+      </div>
+    </div>
+  </div>`;
+
+  /* ══════════════════════ LEVELS 1-4 ══════════════════════ */
+  const LVL_COLOR = {1:'var(--gold)',2:'var(--green)',3:'#7B5CA8',4:'var(--red)'};
+  const LVL_NEXT  = {1:'ثانية',2:'ثالثة',3:'رابعة',4:'(مغادرون)'};
+
   [1,2,3,4].forEach(lvl=>{
-    const cur = RAW_DATA.current.filter(r=>r.lvl===lvl);
-    const total = cur.length;
-    const repeat = cur.filter(r=>r.dec==='R').length;
-    const directed = cur.filter(r=>r.dec==='V').length;
-    const male = cur.filter(r=>r.g==='M').length, female = total-male;
-    let extra = '';
-    if (lvl===1) extra = `<div class="breakdown"><span class="pill"><span class="dot n"></span>وافدون جدد: ${RAW_DATA.new_arrivals.length}</span></div>`;
-    html += `<div class="stat-card">
-      <div class="lvl-tag">${LEVEL_LABEL[lvl]} — حاليًا</div>
-      <div class="big">${total}</div><div class="lbl">تلميذ مسجل</div>
-      <div class="breakdown">
-        <span class="pill"><span class="dot r"></span>إعادة: ${repeat}</span>
-        ${directed? `<span class="pill"><span class="dot v"></span>موجَّه: ${directed}</span>`:''}
-        <span class="pill"><span class="dot m"></span>ذكور: ${male}</span>
-        <span class="pill"><span class="dot f"></span>إناث: ${female}</span>
-      </div>${extra}</div>`;
+    const stu = cur.filter(r=>r.lvl===lvl);
+    const total = stu.length;
+    const totalM = stu.filter(r=>r.g==='M').length;
+    const totalF = total - totalM;
+
+    const repeaters  = stu.filter(r=>r.dec==='R');
+    const promoted   = stu.filter(r=>r.dec==='P');
+    const directed   = stu.filter(r=>r.dec==='V');
+    const left       = stu.filter(r=>r.dec==='L');
+
+    const repM = repeaters.filter(r=>r.g==='M').length;
+    const repF = repeaters.length - repM;
+    const promM = promoted.filter(r=>r.g==='M').length;
+    const promF = promoted.length - promM;
+    const dirM = directed.filter(r=>r.g==='M').length;
+    const dirF = directed.length - dirM;
+    const leftM = left.filter(r=>r.g==='M').length;
+    const leftF = left.length - leftM;
+
+    const mPct = pct(totalM, total);
+    const repPct = pct(repeaters.length, total);
+    const promPct = pct(promoted.length, total);
+
+    const lvlLabel = LEVEL_LABEL[lvl];
+    const color = LVL_COLOR[lvl];
+
+    html += `<div class="lvl-row">
+      <div class="lvl-row-head open" data-target="det-lvl${lvl}" data-row-toggle="true">
+        <span class="lvl-name">${lvlLabel}</span>
+        <span style="display:flex;align-items:center;gap:16px;">
+          <span class="g-chip mf">إجمالي: ${total}</span>
+          <span class="g-chip m">♂ ${totalM}</span>
+          <span class="g-chip f">♀ ${totalF}</span>
+          <span class="lvl-toggle">›</span>
+        </span>
+      </div>
+      <!-- main cols always visible -->
+      <div class="lvl-cols">
+        <div class="stat-block">
+          <div class="sb-lbl" style="color:${color};">جميع التلاميذ</div>
+          <div class="sb-main"><span class="sb-n">${total}</span><span class="sb-sub">تلميذ</span></div>
+          <div class="gender-row">
+            <span class="g-chip m">♂ ${totalM} (${pct(totalM,total)}%)</span>
+            <span class="g-chip f">♀ ${totalF} (${pct(totalF,total)}%)</span>
+          </div>
+          <div class="bar-wrap"><div class="bar-m" style="width:${mPct}%"></div></div>
+        </div>
+        <div class="stat-block">
+          <div class="sb-lbl" style="color:var(--red);">المعيدون 🔁</div>
+          <div class="sb-main"><span class="sb-n">${repeaters.length}</span>
+            <span class="sb-sub">${repPct}% من الإجمالي</span></div>
+          <div class="gender-row">
+            <span class="g-chip m">♂ ${repM}</span>
+            <span class="g-chip f">♀ ${repF}</span>
+          </div>
+          <div class="bar-wrap"><div class="bar-m" style="width:${pct(repM,repeaters.length)}%"></div></div>
+        </div>
+        ${lvl < 4 ? `<div class="stat-block">
+          <div class="sb-lbl" style="color:var(--green);">المنتقلون ↑ ${LVL_NEXT[lvl]}</div>
+          <div class="sb-main"><span class="sb-n">${promoted.length}</span>
+            <span class="sb-sub">${promPct}% من الإجمالي</span></div>
+          <div class="gender-row">
+            <span class="g-chip m">♂ ${promM}</span>
+            <span class="g-chip f">♀ ${promF}</span>
+          </div>
+          <div class="bar-wrap"><div class="bar-m" style="width:${pct(promM,promoted.length)}%"></div></div>
+        </div>` : `
+        <div class="stat-block">
+          <div class="sb-lbl" style="color:var(--green);">الناجحون (مغادرون)</div>
+          <div class="sb-main"><span class="sb-n">${left.length}</span><span class="sb-sub">إلى الثانوية</span></div>
+          <div class="gender-row">
+            <span class="g-chip m">♂ ${leftM}</span>
+            <span class="g-chip f">♀ ${leftF}</span>
+          </div>
+          <div class="bar-wrap"><div class="bar-m" style="width:${pct(leftM,left.length)}%"></div></div>
+        </div>
+        <div class="stat-block">
+          <div class="sb-lbl" style="color:#7B5CA8;">موجَّهون للتكوين 🏫</div>
+          <div class="sb-main"><span class="sb-n">${directed.length}</span><span class="sb-sub">تلميذ</span></div>
+          <div class="gender-row">
+            <span class="g-chip m">♂ ${dirM}</span>
+            <span class="g-chip f">♀ ${dirF}</span>
+          </div>
+          <div class="bar-wrap"><div class="bar-m" style="width:${pct(dirM,directed.length)}%"></div></div>
+        </div>`}
+      </div>
+
+      <!-- expandable detail rows ── hidden by default, toggle opens them -->
+      <div class="detail-rows open" id="det-lvl${lvl}">
+        ${lvl===1 && newArr.length ? `<div class="stat-block">
+          <div class="sb-lbl" style="color:var(--gold);">أولى + وافدون جدد (العام القادم)</div>
+          <div class="sb-main"><span class="sb-n">${repeaters.length + newArr.length}</span><span class="sb-sub">مرتقَبون</span></div>
+          <div class="gender-row">
+            <span class="g-chip m">♂ معيدون ${repM} + جدد ${naM}</span>
+            <span class="g-chip f">♀ معيدات ${repF} + جدد ${naF}</span>
+          </div>
+        </div>`: ''}
+        <div class="stat-block">
+          <div class="sb-lbl">معيدون ذكور فقط</div>
+          <div class="sb-main"><span class="sb-n">${repM}</span><span class="sb-sub"> / ${repeaters.length} معيد</span></div>
+          <div class="bar-wrap"><div class="bar-m" style="width:${pct(repM,repeaters.length)}%"></div></div>
+        </div>
+        <div class="stat-block">
+          <div class="sb-lbl">معيدات إناث فقط</div>
+          <div class="sb-main"><span class="sb-n">${repF}</span><span class="sb-sub"> / ${repeaters.length} معيد</span></div>
+          <div class="bar-wrap" style="transform:scaleX(-1);"><div class="bar-m" style="width:${pct(repF,repeaters.length)}%;background:linear-gradient(90deg,#B05C73,#8B3A58);"></div></div>
+        </div>
+        ${lvl < 4 ? `<div class="stat-block">
+          <div class="sb-lbl">منتقلون ذكور</div>
+          <div class="sb-main"><span class="sb-n">${promM}</span><span class="sb-sub"> / ${promoted.length}</span></div>
+          <div class="bar-wrap"><div class="bar-m" style="width:${pct(promM,promoted.length)}%"></div></div>
+        </div>
+        <div class="stat-block">
+          <div class="sb-lbl">منتقلات إناث</div>
+          <div class="sb-main"><span class="sb-n">${promF}</span><span class="sb-sub"> / ${promoted.length}</span></div>
+          <div class="bar-wrap" style="transform:scaleX(-1);"><div class="bar-m" style="width:${pct(promF,promoted.length)}%;background:linear-gradient(90deg,#B05C73,#8B3A58);"></div></div>
+        </div>`: ''}
+        <div class="stat-block">
+          <div class="sb-lbl">ذكور / إناث كلي</div>
+          <div class="sb-main"><span class="sb-n">${totalM}</span><span class="sb-sub"> ذ &nbsp; ${totalF} إ</span></div>
+          <div class="bar-wrap"><div class="bar-m" style="width:${mPct}%"></div></div>
+        </div>
+      </div>
+    </div>`;
   });
+
+  /* ══════════════════════ GRAND TOTALS ══════════════════════ */
+  const grandTotal = cur.length;
+  const grandM = cur.filter(r=>r.g==='M').length;
+  const grandF = grandTotal - grandM;
+  const grandRep = cur.filter(r=>r.dec==='R').length;
+  const grandRepM = cur.filter(r=>r.dec==='R'&&r.g==='M').length;
+  const grandRepF = grandRep - grandRepM;
+  const nextYearPool = grandRep + newArr.length;
+
+  html += `<div class="lvl-row">
+    <div class="lvl-row-head" style="cursor:default; background:linear-gradient(135deg,var(--green-deep) 0%,#2a5c2e 100%); color:#F4EFDD;">
+      <span class="lvl-name" style="color:#F4EFDD; font-size:16px;">الإجمالي العام — 2025/2026</span>
+      <span style="display:flex;align-items:center;gap:20px;">
+        <span class="g-chip mf">المجموع الكلي: ${grandTotal}</span>
+        <span class="g-chip m">♂ ${grandM}</span>
+        <span class="g-chip f">♀ ${grandF}</span>
+      </span>
+    </div>
+    <div class="lvl-cols" style="background:var(--paper);">
+      <div class="stat-block">
+        <div class="sb-lbl">إجمالي التلاميذ (كل المستويات)</div>
+        <div class="sb-main"><span class="sb-n">${grandTotal}</span><span class="sb-sub">تلميذ</span></div>
+        <div class="gender-row">
+          <span class="g-chip m">♂ ${grandM} (${pct(grandM,grandTotal)}%)</span>
+          <span class="g-chip f">♀ ${grandF} (${pct(grandF,grandTotal)}%)</span>
+        </div>
+        <div class="bar-wrap"><div class="bar-m" style="width:${pct(grandM,grandTotal)}%"></div></div>
+      </div>
+      <div class="stat-block">
+        <div class="sb-lbl" style="color:var(--red);">إجمالي المعيدين (كل المستويات)</div>
+        <div class="sb-main"><span class="sb-n">${grandRep}</span><span class="sb-sub"> — ${pct(grandRep,grandTotal)}% من الإجمالي</span></div>
+        <div class="gender-row">
+          <span class="g-chip m">♂ ${grandRepM}</span>
+          <span class="g-chip f">♀ ${grandRepF}</span>
+        </div>
+        <div class="bar-wrap"><div class="bar-m" style="width:${pct(grandRepM,grandRep)}%"></div></div>
+      </div>
+      <div class="stat-block">
+        <div class="sb-lbl" style="color:var(--gold);">تلاميذ السنة الأولى القادمة (مرتقَبون)</div>
+        <div class="sb-main"><span class="sb-n">${nextYearPool}</span><span class="sb-sub">تلميذ</span></div>
+        <div class="gender-row">
+          <span class="g-chip m">♂ معيدون ${grandRepM > 0 ? cur.filter(r=>r.lvl===1&&r.dec==='R'&&r.g==='M').length : 0} + جدد ${naM}</span>
+          <span class="g-chip f">♀ معيدات ${cur.filter(r=>r.lvl===1&&r.dec==='R'&&r.g==='F').length} + جدد ${naF}</span>
+        </div>
+      </div>
+      <div class="stat-block">
+        <div class="sb-lbl">وافدون جدد (إجمالي)</div>
+        <div class="sb-main"><span class="sb-n">${newArr.length}</span><span class="sb-sub">من الابتدائي</span></div>
+        <div class="gender-row">
+          <span class="g-chip m">♂ ${naM} (${pct(naM,naTotal)}%)</span>
+          <span class="g-chip f">♀ ${naF} (${pct(naF,naTotal)}%)</span>
+        </div>
+        <div class="bar-wrap"><div class="bar-m" style="width:${pct(naM,naTotal)}%"></div></div>
+      </div>
+    </div>
+  </div>`;
+
   el.innerHTML = html;
 }
+
+
 
 function renderInstitution(){
   document.getElementById('inst_republic').value = STATE.institution.republic;
@@ -1223,6 +1501,18 @@ if ('serviceWorker' in navigator && location.protocol.startsWith('http')){
     navigator.serviceWorker.register('sw.js').catch(()=>{ /* manifest/sw not present in this context (e.g. local single-file preview) — safe to ignore */ });
   });
 }
+
+// row toggle delegation (safe: no inline getElementById)
+document.getElementById('overview-stats').addEventListener('click', function(e){
+  const head = e.target.closest('[data-row-toggle="true"]');
+  if (!head) return;
+  head.classList.toggle('open');
+  const targetId = head.dataset.target;
+  if (targetId) {
+    const detail = document.getElementById(targetId);
+    if (detail) detail.classList.toggle('open');
+  }
+});
 
 (async function init(){
   await restore();
